@@ -22,6 +22,7 @@ import { useSetAtom } from 'jotai';
 import { loadingAtom, snackbarAtom } from '../../atom/globalAtom';
 import { Link, useNavigate } from 'react-router';
 import { MobileDatePicker } from '@mui/x-date-pickers/MobileDatePicker';
+
 const AddPurchaseStep = {
   VENDOR: 1,
   PRODUCT: 2,
@@ -40,12 +41,24 @@ export const AddPurchasePage = () => {
   const navigate = useNavigate();
 
   const [step, setStep] = useState(AddPurchaseStep.VENDOR);
+
+  const [searchVendorKey, setSearchVendorKey] = useState('');
   const [listVendor, setListVendor] = useState([]);
+  const [filteredVendor, setFilteredVendor] = useState([]);
+
   const [paymentDate, setPaymentDate] = useState<Dayjs | null>(null);
   const [purchaseDate, setPurchaseDate] = useState<Dayjs | null>(null);
   const fetchVendors = async () => {
-    const response = await axios.get(API_URL + '/vendor/all');
-    setListVendor(response.data.data);
+    try {
+      setLoading(true);
+      const response = await axios.get(API_URL + '/vendor/all');
+      setListVendor(response.data.data);
+    } catch (error) {
+      console.error(error);
+      setSnackbar('Gagal mengambil data vendor');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const [listProduct, setListProduct] = useState<ProductPurchase[]>([]);
@@ -71,6 +84,14 @@ export const AddPurchasePage = () => {
     fetchVendors();
     fetchProducts();
   }, []);
+
+  useEffect(() => {
+    setFilteredVendor(
+      listVendor.filter((vendor: Vendor) =>
+        vendor.name.toLowerCase().includes(searchVendorKey.toLowerCase())
+      )
+    );
+  }, [searchVendorKey, listVendor]);
 
   const handleChangeProductQuantity = (id: number, quantity: number) => {
     setListProduct(
@@ -147,27 +168,35 @@ export const AddPurchasePage = () => {
           <Typography variant="h5" mb={1}>
             Pilih Vendor
           </Typography>
+          <TextField
+            label="Cari Vendor"
+            value={searchVendorKey}
+            onChange={(e) => setSearchVendorKey(e.target.value)}
+            fullWidth
+            sx={{ my: 2 }}
+          />
           <Stack gap={2}>
-            {listVendor.map((vendor: Vendor) => (
+            {filteredVendor.map((vendor: Vendor) => (
               <Card sx={{ p: 3 }} key={vendor.id}>
                 <Stack
                   direction={'row'}
                   justifyContent={'space-between'}
                   alignItems={'center'}
-                  flexWrap={'wrap'}
                 >
                   <Stack flexWrap={'wrap'} gap={2}>
                     <Typography variant="h6">{vendor.name}</Typography>
                     <Stack direction={'row'} flexWrap={'wrap'} gap={2}>
                       <Typography variant="caption">
-                        NPWP: {vendor.npwp}
+                        NPWP: {vendor.npwp ?? '-'}
                       </Typography>
                       <Typography variant="caption">
-                        Telp: {vendor.phone}
+                        Telp: {vendor.phone ?? '-'}
                       </Typography>
-                      <Typography variant="caption">{vendor.email}</Typography>
                       <Typography variant="caption">
-                        {vendor.address}
+                        Email: {vendor.email ?? '-'}
+                      </Typography>
+                      <Typography variant="caption">
+                        Alamat: {vendor.address ?? '-'}
                       </Typography>
                     </Stack>
                   </Stack>
