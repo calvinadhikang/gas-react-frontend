@@ -214,6 +214,10 @@ const DataGridColumns: GridColDef[] = [
         return <Chip label="Purchase" color="error" />;
       } else if (value === 'manual_input') {
         return <Chip label="Manual Input" color="warning" />;
+      } else if (value === 'refund-invoice') {
+        return <Chip label="Refund Invoice" color="error" />;
+      } else if (value === 'refund-purchase') {
+        return <Chip label="Refund Purchase" color="error" />;
       }
       return null;
     },
@@ -246,6 +250,18 @@ const DataGridColumns: GridColDef[] = [
           </MuiLink>
         );
       } else if (row.type === 'purchase') {
+        return (
+          <MuiLink component={Link} to={`/purchase/detail/${row.reference_id}`}>
+            Lihat Purchase
+          </MuiLink>
+        );
+      } else if (row.type === 'refund-invoice') {
+        return (
+          <MuiLink component={Link} to={`/invoice/detail/${row.reference_id}`}>
+            Lihat Invoice
+          </MuiLink>
+        );
+      } else if (row.type === 'refund-purchase') {
         return (
           <MuiLink component={Link} to={`/purchase/detail/${row.reference_id}`}>
             Lihat Purchase

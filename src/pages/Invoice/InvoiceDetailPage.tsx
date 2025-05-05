@@ -24,6 +24,7 @@ import { useSetAtom } from 'jotai';
 import { loadingAtom, snackbarAtom } from '../../atom/globalAtom';
 import { MobileDatePicker } from '@mui/x-date-pickers/MobileDatePicker';
 import { ConfirmationDialog } from '../../components/confirmation-dialog';
+import { UpdateInvoiceProductsDialog } from '../../components/update-invoice-products-dialog';
 interface ProductPurchaseDetail extends Product {
   selected: boolean;
   quantity: number;
@@ -60,6 +61,7 @@ export const InvoiceDetailPage = () => {
 
   const onClickSetFinished = async () => {
     try {
+      setLoading(true);
       await axios.post(`${API_URL}/invoice/transaction-finished/${id}`);
 
       await fetchInvoice();
@@ -67,6 +69,23 @@ export const InvoiceDetailPage = () => {
     } catch (error) {
       console.error(error);
       setSnackbar('Gagal menyelesaikan pesanan');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onClickResetFinished = async () => {
+    try {
+      setLoading(true);
+      await axios.post(`${API_URL}/invoice/transaction-unfinished/${id}`);
+
+      await fetchInvoice();
+      setSnackbar('Pesanan berhasil di reset');
+    } catch (error) {
+      console.error(error);
+      setSnackbar('Gagal mereset pesanan');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -83,6 +102,8 @@ export const InvoiceDetailPage = () => {
   };
 
   const [openUpdateInvoiceDialog, setOpenUpdateInvoiceDialog] = useState(false);
+  const [openUpdateInvoiceProductsDialog, setOpenUpdateInvoiceProductsDialog] =
+    useState(false);
 
   return (
     <Box sx={{ pb: 5 }}>
@@ -197,7 +218,13 @@ export const InvoiceDetailPage = () => {
 
       <Stack direction={'row'} justifyContent={'space-between'} mt={5}>
         <Typography variant="h6">List Barang</Typography>
-        <Button variant="contained">Update Barang</Button>
+        <Button
+          variant="contained"
+          disabled={invoice?.status === 'finished'}
+          onClick={() => setOpenUpdateInvoiceProductsDialog(true)}
+        >
+          Update Barang
+        </Button>
       </Stack>
       <Card sx={{ p: 3, mt: 2 }}>
         <Stack gap={1}>
@@ -219,13 +246,17 @@ export const InvoiceDetailPage = () => {
             />
           </Stack>
         </Stack>
-        <Button
-          variant="contained"
-          disabled={invoice?.status === 'finished'}
-          onClick={onClickSetFinished}
-        >
-          Update Status Transaksi
-        </Button>
+        <Stack direction={'row'} justifyContent={'flex-end'} mt={2}>
+          {invoice?.status === 'finished' ? (
+            <Button variant="contained" onClick={onClickResetFinished}>
+              Reset Status Transaksi
+            </Button>
+          ) : (
+            <Button variant="contained" onClick={onClickSetFinished}>
+              Update Status Transaksi
+            </Button>
+          )}
+        </Stack>
       </Card>
       <DataGrid
         rows={products}
@@ -285,6 +316,12 @@ export const InvoiceDetailPage = () => {
         invoiceId={id ?? ''}
         refetch={fetchInvoice}
         invoice={invoice}
+      />
+      <UpdateInvoiceProductsDialog
+        open={openUpdateInvoiceProductsDialog}
+        onClose={() => setOpenUpdateInvoiceProductsDialog(false)}
+        invoiceId={id ?? ''}
+        refetch={fetchInvoice}
       />
     </Box>
   );
