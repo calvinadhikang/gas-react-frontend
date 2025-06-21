@@ -192,13 +192,14 @@ const renderDataGridColumns = () => {
     {
       field: 'total',
       headerName: 'Total',
-      renderCell: ({ row }: { row: Invoice }) => row.total.toLocaleString(),
+      renderCell: ({ row }: { row: Invoice }) =>
+        parseInt(row.total.toString() ?? '0').toLocaleString(),
     },
     {
       field: 'grand_total',
       headerName: 'Grand Total',
       renderCell: ({ row }: { row: Invoice }) =>
-        row.grand_total.toLocaleString(),
+        parseInt(row.grand_total.toString() ?? '0').toLocaleString(),
     },
     {
       field: 'payment_due_date',

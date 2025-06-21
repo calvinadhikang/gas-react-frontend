@@ -15,7 +15,11 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 import { Invoice, Product } from '../../util/dro';
-import { API_URL } from '../../util/url';
+import {
+  API_URL,
+  DOWNLOAD_INVOICE_URL_NON_PPN,
+  DOWNLOAD_INVOICE_URL_PPN,
+} from '../../util/url';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import dayjs, { Dayjs } from 'dayjs';
@@ -77,13 +81,18 @@ export const InvoiceDetailPage = () => {
   const onClickResetFinished = async () => {
     try {
       setLoading(true);
-      await axios.post(`${API_URL}/invoice/transaction-unfinished/${id}`);
+      await axios.post(
+        `${
+          invoice?.type === 'ppn'
+            ? DOWNLOAD_INVOICE_URL_PPN
+            : DOWNLOAD_INVOICE_URL_NON_PPN
+        }/${id}`
+      );
 
-      await fetchInvoice();
-      setSnackbar('Pesanan berhasil di reset');
+      setSnackbar('Berhasil mendownload invoice');
     } catch (error) {
       console.error(error);
-      setSnackbar('Gagal mereset pesanan');
+      setSnackbar('Gagal mendownload invoice');
     } finally {
       setLoading(false);
     }
@@ -104,6 +113,24 @@ export const InvoiceDetailPage = () => {
   const [openUpdateInvoiceDialog, setOpenUpdateInvoiceDialog] = useState(false);
   const [openUpdateInvoiceProductsDialog, setOpenUpdateInvoiceProductsDialog] =
     useState(false);
+
+  const onClickPrintInvoice = async () => {
+    try {
+      setLoading(true);
+      window.open(
+        `${
+          invoice?.type === 'ppn'
+            ? DOWNLOAD_INVOICE_URL_PPN
+            : DOWNLOAD_INVOICE_URL_NON_PPN
+        }/${id}`
+      );
+      setSnackbar('Invoice berhasil dicetak');
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Box sx={{ pb: 5 }}>
@@ -164,11 +191,16 @@ export const InvoiceDetailPage = () => {
         </Stack>
         <Stack direction={'row'} justifyContent={'space-between'} mt={2}>
           <Typography>Total Pembayaran</Typography>
-          <Typography>Rp {invoice?.paid.toLocaleString()}</Typography>
+          <Typography>
+            Rp {parseInt(invoice?.paid.toString() ?? '0').toLocaleString()}
+          </Typography>
         </Stack>
         <Stack direction={'row'} justifyContent={'space-between'} mt={2}>
           <Typography>Harga Total</Typography>
-          <Typography>Rp {invoice?.grand_total.toLocaleString()}</Typography>
+          <Typography>
+            Rp{' '}
+            {parseInt(invoice?.grand_total.toString() ?? '0').toLocaleString()}
+          </Typography>
         </Stack>
         <Button
           variant="contained"
@@ -270,22 +302,28 @@ export const InvoiceDetailPage = () => {
       <Stack gap={1} mt={2}>
         <Stack justifyContent={'space-between'} direction={'row'}>
           <Typography>Harga Barang</Typography>
-          <Typography>Rp {invoice?.total.toLocaleString()}</Typography>
+          <Typography>
+            Rp {parseInt(invoice?.total.toString() ?? '0').toLocaleString()}
+          </Typography>
         </Stack>
         <Stack justifyContent={'space-between'} direction={'row'}>
           <Typography>PPN (11%)</Typography>
           <Typography>
-            Rp {(invoice?.ppn_value ?? 0).toLocaleString()}
+            Rp {parseInt(invoice?.ppn_value.toString() ?? '0').toLocaleString()}
           </Typography>
         </Stack>
         <Stack justifyContent={'space-between'} direction={'row'}>
           <Typography variant="h6">Harga Setelah PPN</Typography>
           <Typography variant="h6">
-            Rp {invoice?.grand_total.toLocaleString()}
+            Rp{' '}
+            {parseInt(invoice?.grand_total.toString() ?? '0').toLocaleString()}
           </Typography>
         </Stack>
       </Stack>
-      <Stack mt={5}>
+      <Stack mt={5} gap={1}>
+        <Button onClick={onClickPrintInvoice} variant="contained">
+          Download Invoice
+        </Button>
         <Button
           variant="contained"
           color="error"
@@ -399,7 +437,7 @@ const renderProductDataGridColumns = () => {
       headerName: 'Harga Beli',
       flex: 1,
       renderCell: ({ row }: { row: ProductPurchaseDetail }) => {
-        return `Rp ${row.price.toLocaleString()}`;
+        return `Rp ${parseInt(row.price.toString() ?? '0').toLocaleString()}`;
       },
     },
     {
@@ -407,7 +445,7 @@ const renderProductDataGridColumns = () => {
       headerName: 'Total',
       flex: 1,
       renderCell: ({ row }: { row: ProductPurchaseDetail }) => {
-        return `Rp ${row.total.toLocaleString()}`;
+        return `Rp ${parseInt(row.total.toString() ?? '0').toLocaleString()}`;
       },
     },
   ];
@@ -428,13 +466,25 @@ const UpdateInvoiceDialog = ({
 }) => {
   const [paymentDate, setPaymentDate] = useState<Dayjs | null>(null);
   const [purchaseDate, setPurchaseDate] = useState<Dayjs | null>(null);
+  const [code, setCode] = useState(invoice?.code);
+  const setSnackbar = useSetAtom(snackbarAtom);
 
-  const handleUpdatePurchase = async () => {
+  const handleUpdateInvoice = async () => {
     try {
-      await axios.post(`${API_URL}/invoice/update/${invoiceId}`, {
-        payment_due_date: paymentDate?.format('YYYY-MM-DD'),
-        created_at: purchaseDate?.format('YYYY-MM-DD'),
-      });
+      const response = await axios.post(
+        `${API_URL}/invoice/update/${invoiceId}`,
+        {
+          code,
+          payment_due_date: paymentDate?.format('YYYY-MM-DD'),
+          created_at: purchaseDate?.format('YYYY-MM-DD'),
+        }
+      );
+
+      if (!response.data.ok) {
+        setSnackbar(response.data.message);
+        return;
+      }
+
       await refetch();
       onClose();
     } catch (error) {
@@ -454,6 +504,12 @@ const UpdateInvoiceDialog = ({
       <DialogTitle>Update Informasi</DialogTitle>
       <DialogContent>
         <Stack gap={2} mt={2}>
+          <TextField
+            label="Kode Invoice"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            fullWidth
+          />
           <MobileDatePicker
             label="Tanggal Pembuatan Invoice"
             sx={{ width: '100%' }}
@@ -473,7 +529,7 @@ const UpdateInvoiceDialog = ({
         <Button variant="contained" onClick={onClose}>
           Batal
         </Button>
-        <Button variant="contained" onClick={handleUpdatePurchase}>
+        <Button variant="contained" onClick={handleUpdateInvoice}>
           Update
         </Button>
       </DialogActions>
